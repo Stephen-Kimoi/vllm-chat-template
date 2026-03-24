@@ -656,7 +656,7 @@
   // =============================================================
   const CONFIG = {
     // Full URL to your OpenAI-compatible /v1/chat/completions endpoint
-    apiUrl: 'http://165.245.131.148:8000/v1/chat/completions',
+    apiUrl: 'http://<your-host>/v1/chat/completions',
 
     // Model ID as returned by your server (GET /v1/models)
     model: 'Qwen/Qwen2.5-1.5B-Instruct',
@@ -679,7 +679,7 @@
     // Optional: spec grid cells shown in the right panel
     // Each entry: { label: string, value: string, accent?: boolean }
     specs: [
-      { label: 'Endpoint',         value: '165.245.131.148:8000', accent: true },
+      { label: 'Endpoint',         value: '<your-host>:8000', accent: true },
       { label: 'Model',            value: 'Qwen2.5 · 1.5B' },
       { label: 'Inference Engine', value: 'vLLM' },
       { label: 'API Format',       value: 'OpenAI Compat.' },
