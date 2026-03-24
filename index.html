@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vLLM Chat — API Template</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #ED1C24;
+    --accent-dim: rgba(237,28,36,0.15);
+    --accent-glow: rgba(237,28,36,0.4);
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --text-muted: #666;
+    --text-dim: #999;
+    --green: #00e676;
+    --green-dim: rgba(0,230,118,0.1);
+  }
+
+  :root.light {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --surface2: #eeeeee;
+    --border: #d8d8d8;
+    --text: #111111;
+    --text-muted: #888888;
+    --text-dim: #555555;
+    --green: #00875a;
+    --green-dim: rgba(0,135,90,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+    position: relative;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 320px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-badge {
+    background: var(--accent);
+    color: white;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.05em;
+    padding: 6px 14px;
+    clip-path: polygon(0 0, 100% 0, 92% 100%, 0% 100%);
+    padding-right: 20px;
+  }
+
+  .header-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--green-dim);
+    border: 1px solid rgba(0,230,118,0.2);
+    border-radius: 2px;
+    padding: 8px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.04em;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,230,118,0.4); }
+    50% { opacity: 0.8; box-shadow: 0 0 0 4px rgba(0,230,118,0); }
+  }
+
+  /* Hero */
+  .hero {
+    padding: 64px 48px 40px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: clamp(42px, 6vw, 80px);
+    font-weight: 700;
+    line-height: 0.95;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 span { color: var(--accent); }
+
+  .hero-meta {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .meta-item::before {
+    content: '//';
+    color: var(--accent);
+    font-size: 10px;
+  }
+
+  /* Main layout */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  /* Chat panel */
+  .chat-panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 540px;
+  }
+
+  .panel-label {
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-label::before {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 14px;
+    background: var(--accent);
+  }
+
+  .chat-messages {
+    flex: 1;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-height: 280px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .chat-messages::-webkit-scrollbar { width: 3px; }
+  .chat-messages::-webkit-scrollbar-track { background: var(--surface); }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--accent); }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    opacity: 0.35;
+  }
+
+  .empty-icon {
+    width: 48px;
+    height: 48px;
+    border: 1.5px solid var(--text-muted);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .empty-text {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .message {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { align-items: flex-end; }
+  .message.assistant { align-items: flex-start; }
+
+  .msg-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .message.user .msg-label { color: var(--accent); }
+
+  .bubble {
+    max-width: 85%;
+    padding: 16px 20px;
+    line-height: 1.6;
+    font-size: 16px;
+    border-radius: 2px;
+  }
+
+  .message.user .bubble {
+    background: var(--accent);
+    color: white;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 8px 100%);
+  }
+
+  .message.assistant .bubble {
+    background: var(--surface2);
+    color: var(--text);
+    border-left: 3px solid var(--accent);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+
+  .typing-indicator {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 20px;
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    width: fit-content;
+  }
+
+  .typing-indicator.active { display: flex; }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-8px); }
+  }
+
+  /* Input area */
+  .input-area {
+    padding: 24px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+  }
+
+  .input-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .input-wrap::before {
+    content: '>';
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    padding: 14px 16px 14px 36px;
+    resize: none;
+    outline: none;
+    border-radius: 2px;
+    transition: border-color 0.2s;
+    min-height: 52px;
+    max-height: 120px;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--text-muted); }
+
+  button.send-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0 28px;
+    height: 52px;
+    clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%);
+    padding-left: 32px;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  button.send-btn:hover { opacity: 0.85; }
+  button.send-btn:active { transform: scale(0.97); }
+  button.send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Tech panel */
+  .tech-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tech-content {
+    flex: 1;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .spec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .spec-cell {
+    background: var(--surface);
+    padding: 20px 24px;
+  }
+
+  .spec-key {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .spec-val {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.1;
+  }
+
+  .spec-val.accent { color: var(--accent); }
+
+  /* JSON details */
+  .json-section {
+    border: 1px solid var(--border);
+  }
+
+  .json-toggle {
+    width: 100%;
+    background: var(--surface);
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .json-toggle:hover { color: var(--text); }
+
+  .toggle-arrow {
+    transition: transform 0.25s;
+    font-size: 10px;
+  }
+
+  .json-toggle.open .toggle-arrow { transform: rotate(180deg); }
+
+  .json-body {
+    display: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .json-body.open { display: block; }
+
+  .json-block { padding: 4px 0; }
+
+  .json-block-label {
+    padding: 10px 20px 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  pre {
+    padding: 0 20px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: #a0c4ff;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  pre .key { color: #f8f8f2; }
+  pre .str { color: #a8ff78; }
+  pre .num { color: #ffb347; }
+
+  :root.light pre { color: #0550ae; }
+  :root.light pre .key { color: #111111; }
+  :root.light pre .str { color: #1a7f37; }
+  :root.light pre .num { color: #953800; }
+
+  /* Theme toggle */
+  .theme-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 2px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 14px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-info {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+
+  .footer-endpoint {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .chat-panel { border-right: none; border-bottom: 1px solid var(--border); }
+    header, .hero, footer { padding-left: 24px; padding-right: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-area">
+    <div class="logo-badge" id="headerBadge">vLLM</div>
+    <div class="header-title" id="headerTitle">Chat — Live Demo</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      <span id="statusText">Connected</span>
+    </div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">☀️</button>
+  </div>
+</header>
+
+<div class="hero">
+  <h1 id="heroTitle">vLLM<br><span>Chat</span> — Live</h1>
+  <div class="hero-meta" id="heroMeta">
+    <!-- Populated from CONFIG -->
+  </div>
+</div>
+
+<main>
+  <!-- Chat Panel -->
+  <div class="chat-panel">
+    <div class="panel-label">Conversation</div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">⬡</div>
+        <div class="empty-text">Send a message to begin</div>
+      </div>
+      <div class="typing-indicator" id="typingIndicator">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea
+          id="userInput"
+          placeholder="Ask the model anything..."
+          rows="1"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+      </div>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- Info Panel -->
+  <div class="tech-panel">
+    <div class="panel-label">Infrastructure</div>
+    <div class="tech-content">
+      <div class="spec-grid" id="specGrid">
+        <!-- Populated from CONFIG -->
+      </div>
+
+      <div class="json-section">
+        <button class="json-toggle" id="jsonToggle" onclick="toggleJson()">
+          <span>Technical Details — Request &amp; Response JSON</span>
+          <span class="toggle-arrow">▼</span>
+        </button>
+        <div class="json-body" id="jsonBody">
+          <div class="json-block">
+            <div class="json-block-label">→ Request sent to endpoint</div>
+            <pre id="reqJson">// Waiting for first message...</pre>
+          </div>
+          <div style="height:1px;background:var(--border)"></div>
+          <div class="json-block">
+            <div class="json-block-label">← Response from model</div>
+            <pre id="resJson">// Waiting for first response...</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-info" id="footerInfo">vLLM · OpenAI-Compatible API</div>
+  <div class="footer-endpoint" id="footerEndpoint"></div>
+</footer>
+
+<script>
+  // =============================================================
+  //  CONFIG — edit this section to point at your own endpoint
+  // =============================================================
+  const CONFIG = {
+    // Full URL to your OpenAI-compatible /v1/chat/completions endpoint
+    apiUrl: 'http://165.245.131.148:8000/v1/chat/completions',
+
+    // Model ID as returned by your server (GET /v1/models)
+    model: 'Qwen/Qwen2.5-1.5B-Instruct',
+
+    // Optional: displayed in the header badge (keep it short)
+    badge: 'vLLM',
+
+    // Optional: displayed next to the badge
+    headerTitle: 'Chat — Live Demo',
+
+    // Optional: hero heading — use \n to split into two lines
+    heroTitle: 'vLLM\nChat — Live',
+
+    // Optional: status pill text
+    statusText: 'Connected',
+
+    // Optional: footer left-hand side text
+    footerInfo: 'vLLM · OpenAI-Compatible API',
+
+    // Optional: spec grid cells shown in the right panel
+    // Each entry: { label: string, value: string, accent?: boolean }
+    specs: [
+      { label: 'Endpoint',         value: '165.245.131.148:8000', accent: true },
+      { label: 'Model',            value: 'Qwen2.5 · 1.5B' },
+      { label: 'Inference Engine', value: 'vLLM' },
+      { label: 'API Format',       value: 'OpenAI Compat.' },
+    ],
+
+    // Optional: meta tags shown under the hero heading
+    // Each string becomes one tag
+    heroMeta: [
+      'OpenAI-Compatible API',
+      'vLLM Inference Engine',
+      'Chat Completions',
+    ],
+  };
+  // =============================================================
+  //  END CONFIG
+  // =============================================================
+
+  // Apply CONFIG to the UI
+  (function applyConfig() {
+    document.getElementById('headerBadge').textContent  = CONFIG.badge        || 'vLLM';
+    document.getElementById('headerTitle').textContent  = CONFIG.headerTitle  || 'Chat — Live Demo';
+    document.getElementById('statusText').textContent   = CONFIG.statusText   || 'Connected';
+    document.getElementById('footerInfo').textContent   = CONFIG.footerInfo   || '';
+    document.getElementById('footerEndpoint').textContent = CONFIG.apiUrl;
+
+    // Hero title (supports a single \n split)
+    const parts = (CONFIG.heroTitle || 'vLLM\nChat — Live').split('\n');
+    document.getElementById('heroTitle').innerHTML =
+      parts.length > 1
+        ? `${parts[0]}<br><span>${parts.slice(1).join(' ')}</span>`
+        : `<span>${parts[0]}</span>`;
+
+    // Hero meta tags
+    const metaEl = document.getElementById('heroMeta');
+    (CONFIG.heroMeta || []).forEach(tag => {
+      const d = document.createElement('div');
+      d.className = 'meta-item';
+      d.textContent = tag;
+      metaEl.appendChild(d);
+    });
+
+    // Spec grid
+    const grid = document.getElementById('specGrid');
+    (CONFIG.specs || []).forEach(s => {
+      const cell = document.createElement('div');
+      cell.className = 'spec-cell';
+      cell.innerHTML = `
+        <div class="spec-key">${s.label}</div>
+        <div class="spec-val${s.accent ? ' accent' : ''}">${s.value}</div>
+      `;
+      grid.appendChild(cell);
+    });
+  })();
+
+  // =============================================================
+  //  Chat logic
+  // =============================================================
+  const history = [];
+
+  function toggleTheme() {
+    const root = document.documentElement;
+    const btn  = document.getElementById('themeToggle');
+    btn.textContent = root.classList.toggle('light') ? '🌙' : '☀️';
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function toggleJson() {
+    document.getElementById('jsonToggle').classList.toggle('open');
+    document.getElementById('jsonBody').classList.toggle('open');
+  }
+
+  function syntaxHighlight(json) {
+    const str = typeof json === 'string' ? json : JSON.stringify(json, null, 2);
+    return str.replace(
+      /(\"(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*\"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+      match => {
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) return `<span class="key">${match}</span>`;
+          return `<span class="str">${match}</span>`;
+        }
+        return `<span class="num">${match}</span>`;
+      }
+    );
+  }
+
+  function appendMessage(role, content) {
+    const empty   = document.getElementById('emptyState');
+    if (empty) empty.remove();
+
+    const typing    = document.getElementById('typingIndicator');
+    const container = document.getElementById('chatMessages');
+
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    div.innerHTML = `
+      <div class="msg-label">${role === 'user' ? 'You' : 'Assistant'}</div>
+      <div class="bubble">${content}</div>
+    `;
+    container.insertBefore(div, typing);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const input   = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const text    = input.value.trim();
+    if (!text) return;
+
+    input.value        = '';
+    input.style.height = 'auto';
+    sendBtn.disabled   = true;
+
+    appendMessage('user', text);
+    history.push({ role: 'user', content: text });
+
+    document.getElementById('typingIndicator').classList.add('active');
+
+    const requestBody = { model: CONFIG.model, messages: history };
+    document.getElementById('reqJson').innerHTML = syntaxHighlight(requestBody);
+
+    try {
+      const res  = await fetch(CONFIG.apiUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(requestBody),
+      });
+
+      const data = await res.json();
+      document.getElementById('resJson').innerHTML = syntaxHighlight(data);
+
+      const reply = data.choices?.[0]?.message?.content ?? 'No response';
+      history.push({ role: 'assistant', content: reply });
+      appendMessage('assistant', reply);
+
+      // Auto-open JSON panel on first response
+      if (!document.getElementById('jsonBody').classList.contains('open')) {
+        toggleJson();
+      }
+    } catch (err) {
+      appendMessage('assistant',
+        `<span style="color:var(--accent)">Error: ${err.message}. Check that your server is running and CORS is enabled.</span>`
+      );
+    } finally {
+      document.getElementById('typingIndicator').classList.remove('active');
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+</script>
+</body>
+</html>
